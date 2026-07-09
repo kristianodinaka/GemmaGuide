@@ -258,8 +258,8 @@ export default function App() {
 
       {/* ── Site Header ── */}
       <header>
-        <div className="system-title">Decision Support</div>
-        <div className="system-subtitle">Student AI Decision Support System</div>
+        <div className="system-title">GemmaGuide</div>
+        <div className="system-subtitle">Offline Academic Decision Support for Students</div>
       </header>
 
       {/* ── Navigation for logged-in users ── */}
@@ -587,7 +587,7 @@ export default function App() {
 
       {/* ── Footer ── */}
       <footer>
-        <p>© 2026 Student AI Decision Support System · Powered by Llama 3.1</p>
+        <p>© 2026 GemmaGuide · Powered by Gemma</p>
       </footer>
     </div>
   );
