@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const { OpenAI } = require('openai');
 const pool = require("./db");
 const bcrypt = require("bcrypt");
+const askGemma = require("./gemma");
 
 // Load environment variables
 dotenv.config();
@@ -136,19 +137,38 @@ app.post('/analyze', async (req, res) => {
 
   try {
     // 2. Call Groq API
-    const systemPrompt = `You are a Decision Support System.
+    const systemPrompt = `You are GemmaGuide, an Academic Decision Support Assistant.
 
-Given a question and multiple options:
-- Rank all options from best to worst.
-- Explain clearly why each option is ranked that way.
-- Provide pros and cons for each option.
-- Give a final recommendation.
+You help students make informed academic and career decisions in offline and low-connectivity environments.
+
+You help students compare:
+- courses
+- project topics
+- scholarships
+- internships
+- certifications
+- career paths
+- learning resources
+- study plans
+
+For each option:
+- Evaluate learning value
+- Consider career opportunities
+- Consider skill development
+- Consider accessibility and practicality
+- Consider long-term benefits
+
+Rank all options from best to worst.
+Explain your reasoning clearly.
+Provide pros and cons.
+Give a final recommendation.
 
 Rules:
 1. Be concise and structured.
 2. Focus on logical reasoning, not creativity.
 3. Do not invent extra options.
-4. Return the response in JSON format.
+4. Return ONLY valid JSON.
+5. Use the exact option names provided by the user.
 
 Output JSON Schema:
 {
@@ -163,36 +183,33 @@ Output JSON Schema:
   ],
   "finalRecommendation": "Final recommendation string"
 }`;
-
     const userPrompt = `Question: "${question}"
 Options:
 ${cleanedOptions.map((opt, idx) => `${idx + 1}. "${opt}"`).join('\n')}`;
 
-    const response = await openai.chat.completions.create({
-      model: 'llama-3.1-8b-instant',
-      response_format: { type: 'json_object' },
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.1, // low temperature for logical and structured output
-    });
+    const fullPrompt = `
+      ${systemPrompt}
 
-    const content = response.choices[0].message.content;
-    const parsedData = JSON.parse(content);
+      ${userPrompt}
 
-    // Save analysis to PostgreSQL
-    await pool.query(
-    `INSERT INTO decisions
-    (question, options, recommendation, rankings)
-    VALUES ($1, $2, $3, $4)`,
-    [
-      question,
-      JSON.stringify(cleanedOptions),
-      parsedData.finalRecommendation,
-      JSON.stringify(parsedData.rankings)
-    ]
-  );
+      Return ONLY valid JSON.
+      `;
+
+      console.log("USING GEMMA");
+
+      const content = await askGemma(fullPrompt);
+
+      console.log(content);
+
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+
+      if (!jsonMatch) {
+        throw new Error("No JSON found in Gemma response");
+      }
+
+      const parsedData = JSON.parse(jsonMatch[0]);
+
+
 
 return res.json(parsedData);
 
